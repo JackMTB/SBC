@@ -129,11 +129,30 @@ def create_lin_seq(nbar, rabi_fr, n_pulses):
     seq = np.linspace(min_t, max_t, n_pulses)
     return seq
 
+def prob_motion_decay(n, sb_order, LD_param):
+    # this function gives the probability of decay to the nth
+    # order sideband (up to 10th order) for a given fock state n. 
+    # First order red sideband corresponds to sb_order = -1. 
+    m_list = make_m_list(n)
+    normalisation = 0
+    for m in m_list:
+        normalisation += Om_n_m(LD_param, n, m, 1)
+    return Om_n_m(LD_param, n, sb_order, 1) / normalisation
+
+def make_m_list(n):
+    upperlim = 10 #this works ok up to an n of 100
+    if n<upperlim:
+        m_list = np.arange(-n,upperlim)
+    else:
+        m_list = np.arange(-upperlim,upperlim)
+    return m_list
+
 class Simulate_sequence:
     # Simulates how a pulse sequence impacts the initial thermal distribution of an ion
     
     def __init__(self,pulse_sequence, nbar, rabi_fr,
                 simulation_type='fast',
+                dispersion=False,
                 initial_distribution=None,
                 max_fidelity=1e-6):
         self.nbar = nbar
@@ -213,8 +232,12 @@ class Simulate_sequence:
             positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr)
             negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr)
             
-            distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
-            
+            if self.dispersion == False:
+                distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
+            elif self.dispersion == True:
+                # prob_delta_n_minus_one = 
+                distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
+
         self.distribution = distribution
 
 class Analyse_sequence:
