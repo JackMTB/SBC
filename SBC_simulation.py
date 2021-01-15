@@ -2,55 +2,63 @@ import numpy as np
 import scipy.optimize as opt
 import scipy.special as sp
 
-def Om_n_m(eta,n,m,Om0):
-    """
-    Caclculate modified rabi freq between state n and n+m
+def product_pos_m(n, m):
+    if type(n)==int:
+        prod = 1
+    else:
+        prod = np.ones(np.shape(n), dtype=int)
+    for i  in range(0,m):
+        prod = prod / (n+m-i)
+    return prod**0.5
 
-    t1: exp^-eta^2/2
-    t2: eta^abs(m)
-    t3: sqrt[min(n,n+m)!/max(n,n+m)!]
-    t4: Laguerre (eta^2,min(n,n+m),abs(m))
-    """
+def product_neg_m(n, m):
+    if type(n)==int:
+        prod = 1
+        if n-m>=0:
+            for i  in range(0,m):
+                prod = prod / (n+m-i)
+    else:
+        prod = np.ones(np.shape(n), dtype=float)
+        cacca = np.ones(np.shape(n[m:]),dtype=float)
+        for i  in range(0,m):
+            cacca = cacca / (n[m:]+2*m-i)
+        prod[m:] = prod[m:] * cacca
+        prod[:m] = 0
+
+    return prod**0.5
+
+def Om_n_m(eta,n,m,Om0):
     t1 = np.exp(-eta**2/2)
     t2 = eta**np.abs(m)
-
-    #sp.factorial(nmax), nmax = 170
-    if m >= 0:
-        if m == 0:
-            t3a = 1
-        elif m == 1:
-            t3a = np.sqrt(1/(n+1))
-        elif m == 2:
-            t3a = np.sqrt(1/((n+1)*(n+2)))
-        else:
-            nf = sp.factorial(n)
-            nmf = sp.factorial(n+m)
-            t3a = np.sqrt(nf/nmf)
-
-        t3 = t3a#np.where(np.isnan(t3a), 1, t3a)
+    if m == 0:
+        t3 = 1
         t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
-
-    else:
-        if m == -1:
-            if n == 0:
-                t3a = 1
-            else:
-                t3a = np.sqrt(1/n)
-        elif m == -2:
-            if n == 0 or n == 1:
-                t3a = 1
-            else:
-                t3a = np.sqrt(1/(n*(n-1)))
-        else:
-            nf = sp.factorial(n)
-            nmf = sp.factorial(n+m)
-            t3a = np.sqrt(nmf/nf)
-
-        t3 = t3a#np.where(np.isnan(t3a), 1, t3a)
-        t4 = np.abs(sp.assoc_laguerre(eta**2,n+m,np.abs(m)))
+        
+    elif m > 0:
+        t3 = product_pos_m(n, m)
+        t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
+    
+    elif m < 0:
+        t3 = product_neg_m(n, -m)
+        t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
 
     return Om0*t1*t2*t3*t4
 
+class prob_motion_decay:
+
+    def __init__(self,n, LD_param, upper_sb_transition = 7):
+        # this function gives the probability of decay to the sideband
+        self.upper_sb_transition = upper_sb_transition
+        m_list = np.arange(-upper_sb_transition,upper_sb_transition+1, dtype = int)
+        all_probs = np.zeros((len(m_list),len(n)))
+        for i, m in enumerate(m_list):
+            all_probs[i] = Om_n_m(LD_param, n, m, 1)
+        normalisation = sum(all_probs)
+        all_probs = all_probs / normalisation
+        self.all_probs = all_probs
+
+    def delta_n(self,sb):
+        return self.all_probs[self.upper_sb_transition + sb]
 
 def therm_dist(n,nb):
     """
@@ -129,23 +137,7 @@ def create_lin_seq(nbar, rabi_fr, n_pulses):
     seq = np.linspace(min_t, max_t, n_pulses)
     return seq
 
-def prob_motion_decay(n, sb_order, LD_param):
-    # this function gives the probability of decay to the nth
-    # order sideband (up to 10th order) for a given fock state n. 
-    # First order red sideband corresponds to sb_order = -1. 
-    m_list = make_m_list(n)
-    normalisation = 0
-    for m in m_list:
-        normalisation += Om_n_m(LD_param, n, m, 1)
-    return Om_n_m(LD_param, n, sb_order, 1) / normalisation
 
-def make_m_list(n):
-    upperlim = 10 #this works ok up to an n of 100
-    if n<upperlim:
-        m_list = np.arange(-n,upperlim)
-    else:
-        m_list = np.arange(-upperlim,upperlim)
-    return m_list
 
 class Simulate_sequence:
     # Simulates how a pulse sequence impacts the initial thermal distribution of an ion
