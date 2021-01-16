@@ -5,7 +5,7 @@
 The following investigation aims at determing the pulse time and number of pulses which leads to the highest cooling rate in SBC.
 Sideband cooling works by driving in cycles the red sideband transition, which excites the transition
 
-$$ |g,n\rangle \leftrightarrow |e,n-1\rangle $$
+$ |g,n\rangle \leftrightarrow |e,n-1\rangle $
 
 such that $\bar{n}$ reduces at each cycle. After Doppler cooling, the ion is typically in a mixed state, which can be described by
 
