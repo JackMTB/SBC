@@ -47,17 +47,28 @@ def Om_n_m(eta,n,m,Om0):
 class prob_motion_decay:
 
     def __init__(self,n, LD_param, upper_sb_transition = 7):
-        # this function gives the probability of decay to the sideband
         self.upper_sb_transition = upper_sb_transition
+
+        #list of m-th addressed sidebands
         m_list = np.arange(-upper_sb_transition,upper_sb_transition+1, dtype = int)
+
+        #initialise matrix
         all_probs = np.zeros((len(m_list),len(n)))
+
+        #calculate the modified_Rabi given a list of fock state "n", for a given m, for all m.
         for i, m in enumerate(m_list):
             all_probs[i] = Om_n_m(LD_param, n, m, 1)
+        
+        #normalise the probability. sum of p over all m =1
         normalisation = sum(all_probs)
         all_probs = all_probs / normalisation
+
+        #assign the probability matrix
         self.all_probs = all_probs
 
     def delta_n(self,sb):
+        #return the probability for the list of fock state given
+        #  a transition to the m-th sb
         return self.all_probs[self.upper_sb_transition + sb]
 
 def therm_dist(n,nb):
