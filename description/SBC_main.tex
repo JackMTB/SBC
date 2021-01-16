@@ -1,0 +1,37 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{Sideband Cooling Simulation}
+\author{Jacopo Mosca Toba}
+\date{16/01/2021}
+
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{physics}%Used for braket notation
+\usepackage{amsmath,bm}%mathematical equation alignment and other
+\usepackage[version=4]{mhchem}%for writing natural elements
+\usepackage{dsfont}%for the identity matrix
+\usepackage{tikz}%for atomic level structure diagrams
+\usetikzlibrary{arrows}
+\usepackage{xcolor}%for colors
+\usepackage{slashbox}%for cutting tables cell diagonally
+\usepackage[left=3cm, right=3cm, top=3cm , bottom = 3cm]{geometry}
+\usepackage{amssymb}% for the symbol Z as in group of integers
+\usepackage{setspace}
+\doublespacing
+
+
+\newcommand{\vect}[1]{\mathbf{#1}}
+\newcommand*{\hham}{\hat{\mathcal{H}}}
+\newcommand{\paulz}{\hat{\sigma}_z}
+\newcommand{\paulx}{\hat{\sigma}_x}
+\newcommand{\crea}{\hat{a}^\dagger}
+\newcommand{\anni}{\hat{a}}
+\newcommand{\mat}[1]{\overline{\overline{#1}}}
+
+\begin{document}
+	\maketitle
+%\tableofcontents
+\input{SBC_theory.tex}
+\input{SBC_model.tex}
+\end{document}
