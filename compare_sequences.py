@@ -10,7 +10,7 @@ initial_nbar = 30
 seq_jj = sbc.create_sequence_n1(initial_nbar, rabi_fr, fidelity=1e-3)
 seq_const = sbc.create_const_seq(initial_nbar, rabi_fr, len(seq_jj))
 
-pulse_sequence_list = [seq_jj, seq_const]
+pulse_sequence_list = [seq_jj[:10]]
 # nbars=[initial_nbar,initial_nbar-10,initial_nbar+10]
 labels = ['my seq', 'constant seq']
 
@@ -19,27 +19,43 @@ ax1 = fig.add_subplot(111)
 i=0
 for pulse_sequence in pulse_sequence_list:
     # simulation and analysis
-    sequence_simulation = sbc.Simulate_sequence(pulse_sequence, initial_nbar, rabi_fr)
+    sequence_simulation = sbc.Simulate_sequence(pulse_sequence, initial_nbar, rabi_fr,0.107)
+    # print(sequence_simulation.distribution)
     analysis = sbc.Analyse_sequence(sequence_simulation.distribution)
 
     # plot
-    ax1.plot(1-analysis.p_0,linewidth=2, label = labels[i])
+    # ax1.plot(1-analysis.p_0,linewidth=2, label = labels[i])
+    # ax1.plot(sequence_simulation.distribution[-1])
     # ax1.plot(pulse_sequence*1e6,linewidth=2, label = labels[i])
-    print('Fidelity of ground state preparation:' + '{:.3e}'.format(1-analysis.p_0[-1]))
-    print('Final nbar:' + '{:.3e}'.format(analysis.nbar[-1]))
-    print('Number of pulses in sequence: ' + str(len(pulse_sequence)))
+    # print('Fidelity of ground state preparation:' + '{:.3e}'.format(1-analysis.p_0[-1]))
+    # print('Final nbar:' + '{:.3e}'.format(analysis.nbar[-1]))
+    # print('Number of pulses in sequence: ' + str(len(pulse_sequence)))
     i+=1
 
-ax1.set_xlabel('Pulse number', fontsize=18)
-ax1.set_ylabel('1-Population in n=0', fontsize=18)
+ax1.plot(sequence_simulation.distribution[0])
+ax1.plot(sequence_simulation.distribution[1])
+ax1.plot(sequence_simulation.distribution[2])
+ax1.plot(sequence_simulation.distribution[3])
+ax1.plot(sequence_simulation.distribution[4])
+ax1.plot(sequence_simulation.distribution[5])
+ax1.plot(sequence_simulation.distribution[6])
+ax1.plot(sequence_simulation.distribution[7])
+ax1.plot(sequence_simulation.distribution[8])
+
+# ax1.plot(sequence_simulation.distribution[0])
+# ax1.plot(prob_excitation_n(pulse_time, n, rabi_fr, ))
+# ax1.plot(1-analysis.p_0)
+
+# ax1.set_xlabel('Pulse number', fontsize=18)
+# ax1.set_ylabel('1-Population in n=0', fontsize=18)
 
 # ax1.set_xlabel('Pulse number', fontsize=18)
 # ax1.set_ylabel('Time [us]', fontsize=18)
 
 ax1.tick_params(axis='both', labelsize= 18)
 # ax1.set_ylim(top=1)
-ax1.set_xlim(0)
-ax1.set_yscale('log')
+# ax1.set_xlim(0)
+# ax1.set_yscale('log')
 ax1.grid()
 ax1.legend(fontsize = 18)
 

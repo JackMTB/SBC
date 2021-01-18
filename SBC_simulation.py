@@ -17,13 +17,21 @@ def product_neg_m(n, m):
         if n-m>=0:
             for i  in range(0,m):
                 prod = prod / (n+m-i)
+    # else:
+    #     prod = np.ones(np.shape(n), dtype=float)
+    #     cacca = np.ones(np.shape(n[m:]),dtype=float)
+    #     for i  in range(0,m):
+    #         cacca = cacca / (n[m:]+2*m-i)
+    #     prod[m:] = prod[m:] * cacca
+    #     prod[:m] = 0
+
     else:
         prod = np.ones(np.shape(n), dtype=float)
-        cacca = np.ones(np.shape(n[m:]),dtype=float)
+        cacca = np.ones(np.shape(n[n-m>=0]),dtype=float)
         for i  in range(0,m):
-            cacca = cacca / (n[m:]+2*m-i)
-        prod[m:] = prod[m:] * cacca
-        prod[:m] = 0
+            cacca = cacca / (n[n-m>=0]+2*m-i)
+        prod[n-m>=0] = prod[n-m>=0] * cacca
+        prod[n-m<0] = 0
 
     return prod**0.5
 
@@ -48,9 +56,12 @@ class prob_motion_decay:
 
     def __init__(self,n, LD_param, upper_sb_transition = 7):
         self.upper_sb_transition = upper_sb_transition
-
+        self.n = n
         #list of m-th addressed sidebands
-        m_list = np.arange(-upper_sb_transition,upper_sb_transition+1, dtype = int)
+        if upper_sb_transition==0:
+            m_list = [0]
+        else:
+            m_list = np.arange(-upper_sb_transition,upper_sb_transition+1, dtype = int)
 
         #initialise matrix
         all_probs = np.zeros((len(m_list),len(n)))
@@ -69,7 +80,11 @@ class prob_motion_decay:
     def delta_n(self,sb):
         #return the probability for the list of fock state given
         #  a transition to the m-th sb
-        return self.all_probs[self.upper_sb_transition + sb]
+        if (np.shape(self.all_probs)[0] == 1) and (sb!=0):
+            output = np.zeros(len(self.n))
+        else:
+            output = self.all_probs[self.upper_sb_transition + sb]
+        return output
 
 def therm_dist(n,nb):
     """
@@ -129,10 +144,8 @@ def create_sequence_n1(nbar, rabi_fr, fidelity = 1e-4):
 def get_optimal_t(n, rabi_fr, LD_param=0.107):
     return np.pi / Om_n_m(LD_param, n, -1, rabi_fr)
 
-def prob_excitation_n(t, n_list, rabi_fr, LD_param=0.107):
-        rabi_rsb = np.zeros(len(n_list))
-        for i,n in enumerate(n_list):
-            rabi_rsb[i] = Om_n_m(LD_param, n, -1, rabi_fr)
+def prob_excitation_n(t, n_list, rabi_fr, LD_param):
+        rabi_rsb = Om_n_m(LD_param, n_list, -1, rabi_fr)
         return np.sin(rabi_rsb*0.5*t)**2
 
 def create_const_seq(nbar, rabi_fr, n_pulses, fraction = 0.95):
@@ -153,11 +166,15 @@ def create_lin_seq(nbar, rabi_fr, n_pulses):
 class Simulate_sequence:
     # Simulates how a pulse sequence impacts the initial thermal distribution of an ion
     
-    def __init__(self,pulse_sequence, nbar, rabi_fr,
+    def __init__(self,pulse_sequence, nbar, rabi_fr, LD_param,
+                upper_sb_transition = 6,
                 simulation_type='fast',
                 dispersion=False,
                 initial_distribution=None,
-                max_fidelity=1e-6):
+                max_fidelity=1e-6): #------------------------------------------------------------change back
+        self.dispersion = dispersion
+        self.upper_sb_transition = upper_sb_transition
+        self.LD_param = LD_param
         self.nbar = nbar
         self.rabi_fr = rabi_fr
         self.pulse_sequence = pulse_sequence
@@ -199,13 +216,15 @@ class Simulate_sequence:
                 distribution[0] = self.initial_distribution
                 
             for i, pulse_time in enumerate(self.pulse_sequence):
-                prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr)
+                prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
                 occurred_transitions = self.simulate_transition_occurence(prob_exc)
                 distribution[i+1] = self.update_population(distribution[i], occurred_transitions)
             
             summed_distribution += distribution
             
         self.distribution = summed_distribution / num_repeat
+    
+
         
     def simulate_cooling_sequence(self):
         
@@ -225,21 +244,69 @@ class Simulate_sequence:
             distribution[0] = therm_dist(n,self.nbar)
         else:
             distribution[0] = self.initial_distribution
+
+        # Calculate the prob of decay to the mth sideband
+        prob_motion_D = prob_motion_decay(n, self.LD_param, upper_sb_transition= self.upper_sb_transition)
         
         # Calculate variation in population distribution for each pulse in the pulse sequence.
         for i, pulse_time in enumerate(self.pulse_sequence):
-            prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr)
+
+            prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
             self.accumulated_prob += prob_exc 
             
-            positive_contribution = np.zeros(len(n))
-            positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr)
-            negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr)
-            
             if self.dispersion == False:
+                positive_contribution = np.zeros(len(n))
+                positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
+                negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+
                 distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
+
+            # elif self.dispersion == True:
+            #     extended_pop = np.zeros(len(n)+2*self.upper_sb_transition+1)
+            #     extended_pop[self.upper_sb_transition+1:-self.upper_sb_transition] = distribution[i]
+                
+            #     extended_exc_prob = np.zeros(len(n)+2*self.upper_sb_transition+1)
+            #     extended_exc_prob[self.upper_sb_transition+1:-self.upper_sb_transition] = prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+
+            #     positive_contribution = np.zeros(len(n))
+            #     extended_mot_prob = np.zeros(len(n)+2*self.upper_sb_transition)
+            #     for m in np.arange(-self.upper_sb_transition,self.upper_sb_transition+1,dtype=int):
+                    
+            #         extended_mot_prob[self.upper_sb_transition+1:-self.upper_sb_transition] = prob_motion_D.delta_n(m)
+            #         print(f'')
+            #         positive_contribution = positive_contribution +\
+            #                                 extended_pop[(self.upper_sb_transition-m+1) : (self.upper_sb_transition+len(n)-m+1)] *\
+            #                                 extended_exc_prob[(self.upper_sb_transition-m+1) : (self.upper_sb_transition+len(n)-m+1)] *\
+            #                                 extended_mot_prob[(self.upper_sb_transition-m) : (self.upper_sb_transition+len(n)-m)]
+
+            #     negative_contribution = np.zeros(len(n))
+            #     negative_contribution[1:] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param) * (1-prob_motion_D.delta_n(1)[:-1])
+                
+            #     print(sum(positive_contribution)/sum(negative_contribution))
+
+            #     distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
+
             elif self.dispersion == True:
-                # prob_delta_n_minus_one = 
-                distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
+                pos_contribution = np.zeros(len(n))
+                neg_contribution = np.zeros(len(n))
+                prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+
+                for ni in n:
+                    
+                    for m in np.arange(-self.upper_sb_transition,self.upper_sb_transition+1,dtype=int):
+                        prob_mot = prob_motion_D.delta_n(m)
+
+                        if (ni+m+1<0) or (ni+m+1>len(n)-1):
+                            continue
+                        else:
+                            pos_contribution[ni] +=  prob_exc[ni+m+1] * distribution[i,ni+m+1] * prob_mot[ni]
+
+                    
+                    prob_mot = prob_motion_D.delta_n(1)
+                    neg_contribution[ni] = prob_exc[ni] * distribution[i,ni] * (1-prob_mot[ni])
+
+                print(sum(pos_contribution)/sum(neg_contribution))              
+                distribution[i+1] = distribution[i] + pos_contribution - neg_contribution
 
         self.distribution = distribution
 
