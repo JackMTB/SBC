@@ -17,40 +17,71 @@ def product_neg_m(n, m):
         if n-m>=0:
             for i  in range(0,m):
                 prod = prod / (n+m-i)
-    # else:
-    #     prod = np.ones(np.shape(n), dtype=float)
-    #     cacca = np.ones(np.shape(n[m:]),dtype=float)
-    #     for i  in range(0,m):
-    #         cacca = cacca / (n[m:]+2*m-i)
-    #     prod[m:] = prod[m:] * cacca
-    #     prod[:m] = 0
-
+        else:
+            prod = 0
     else:
         prod = np.ones(np.shape(n), dtype=float)
-        cacca = np.ones(np.shape(n[n-m>=0]),dtype=float)
         for i  in range(0,m):
-            cacca = cacca / (n[n-m>=0]+2*m-i)
-        prod[n-m>=0] = prod[n-m>=0] * cacca
+            prod[n-m>=0] = prod[n-m>=0] / (n[n-m>=0]+m-i)
         prod[n-m<0] = 0
+        
+
+    # else:
+    #     prod = np.ones(np.shape(n), dtype=float)
+    #     cacca = np.ones(np.shape(n[n-m>=0]),dtype=float)
+    #     for i  in range(0,m):
+    #         cacca = cacca / (n[n-m>=0]+2*m-i)
+    #     prod[n-m>=0] = prod[n-m>=0] * cacca
+    #     prod[n-m<0] = 0
 
     return prod**0.5
 
 def Om_n_m(eta,n,m,Om0):
-    t1 = np.exp(-eta**2/2)
-    t2 = eta**np.abs(m)
-    if m == 0:
-        t3 = 1
-        t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
-        
-    elif m > 0:
-        t3 = product_pos_m(n, m)
-        t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
-    
-    elif m < 0:
-        t3 = product_neg_m(n, -m)
-        t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
 
-    return Om0*t1*t2*t3*t4
+    if type(n)==int:
+        if n<0:
+            output = 0
+
+        else:
+            t1 = np.exp(-eta**2/2)
+            t2 = eta**np.abs(m)
+            if m == 0:
+                t3 = 1
+                t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
+                
+            elif m > 0:
+                t3 = product_pos_m(n, m)
+                t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
+            
+            elif (m < 0) and (n+m>=0):
+                t3 = product_neg_m(n, -m)
+                t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
+
+            elif (m < 0) and (n+m<0):
+                t3 = 1
+                t4 = 0
+
+            output = Om0*t1*t2*t3*t4
+    else:
+        output = np.zeros(len(n))
+
+        t1 = np.exp(-eta**2/2)
+        t2 = eta**np.abs(m)
+        if m == 0:
+            t3 = 1
+            t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+            
+        elif m > 0:
+            t3 = product_pos_m(n[n>=0], m)
+            t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+        
+        elif m < 0:
+            t3 = product_neg_m(n[n>=0], -m)
+            t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+
+        output[n>=0] = Om0*t1*t2*t3*t4
+
+    return output
 
 class prob_motion_decay:
 
@@ -68,11 +99,11 @@ class prob_motion_decay:
 
         #calculate the modified_Rabi given a list of fock state "n", for a given m, for all m.
         for i, m in enumerate(m_list):
-            all_probs[i] = Om_n_m(LD_param, n, m, 1)
+            all_probs[i] = sbc.Om_n_m(LD_param, n+m, -m, 1)
         
         #normalise the probability. sum of p over all m =1
         normalisation = sum(all_probs)
-        all_probs = all_probs / normalisation
+        all_probs[:,n>0] = all_probs[:,n>0] / normalisation[n>0]
 
         #assign the probability matrix
         self.all_probs = all_probs
