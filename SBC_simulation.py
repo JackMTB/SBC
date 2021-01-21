@@ -39,17 +39,19 @@ def Om_n_m(eta,n,m,Om0):
         if m == 0:
             t3 = 1
             t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+            output[n>=0] = Om0*t1*t2*t3*t4
             
         elif m > 0:
             t3 = product_pos_m(n[n>=0], m)
             t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+            output[n>=0] = Om0*t1*t2*t3*t4
         
         elif m < 0:
             t3 = product_neg_m(n[n>=0], -m)
             t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
-
-        output[n>=0] = Om0*t1*t2*t3*t4
-
+            output_temp = np.zeros(len(n))
+            output_temp[n>=0] = Om0*t1*t2*t3*t4
+            output[n+m>=0] = output_temp[:len(output[n+m>=0])]
     return output
 
 def product_pos_m(n, m):
@@ -74,8 +76,7 @@ def product_neg_m(n, m):
     else:
         prod = np.ones(np.shape(n), dtype=float)
         for i  in range(0,m):
-            prod[n-m>=0] = prod[n-m>=0] / (n[n-m>=0]+m-i)
-        prod[n-m<0] = 0
+            prod = prod / (n+m-i)
     return prod**0.5
 
     
