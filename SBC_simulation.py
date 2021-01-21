@@ -147,23 +147,23 @@ def calculate_upper_n(nbar, fidelity):
             n += 1
         return n
 
-def generate_sequence(weights,rabi_fr):
+def generate_sequence(weights,rabi_fr,LD_param):
     sequence = np.zeros(int(sum(weights)))
     i = 0
     for n, weight in enumerate(weights):
 
         if weight!=0:
-            sequence[i:i+weight] = np.full(weight, get_optimal_t(n+1, rabi_fr))
+            sequence[i:i+weight] = np.full(weight, get_optimal_t(n+1, rabi_fr,LD_param))
             i+= weight
     return sequence[::-1]
 
-def create_sequence_n1(nbar, rabi_fr, fidelity = 1e-4):
+def create_sequence_n1(nbar, rabi_fr, LD_param, fidelity = 1e-4):
     weights = np.ones(calculate_upper_n(nbar, fidelity), dtype=int)
     print(len(weights))
-    sequence = generate_sequence(weights,rabi_fr)
+    sequence = generate_sequence(weights,rabi_fr,LD_param)
     return sequence
 
-def get_optimal_t(n, rabi_fr, LD_param=0.107):
+def get_optimal_t(n, rabi_fr, LD_param):
     return np.pi / Om_n_m(LD_param, n, -1, rabi_fr)
 
 def prob_excitation_n(t, n_list, rabi_fr, LD_param):
