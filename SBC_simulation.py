@@ -23,8 +23,8 @@ def Om_n_m(eta,n,m,Om0):
                 t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
             
             elif (m < 0) and (n+m>=0):
-                t3 = product_neg_m(n, -m)
-                t4 = np.abs(sp.assoc_laguerre(eta**2,n,np.abs(m)))
+                t3 = product_pos_m(n+m, -m)
+                t4 = np.abs(sp.assoc_laguerre(eta**2,n+m,np.abs(m)))
 
             elif (m < 0) and (n+m<0):
                 t3 = 1
@@ -47,10 +47,12 @@ def Om_n_m(eta,n,m,Om0):
             output[n>=0] = Om0*t1*t2*t3*t4
         
         elif m < 0:
-            t3 = product_neg_m(n[n>=0], -m)
-            t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
-            output_temp = np.zeros(len(n))
-            output_temp[n>=0] = Om0*t1*t2*t3*t4
+
+            positive_n = n[n>=0]
+            t3 = product_pos_m(positive_n, -m)
+            t4 = np.abs(sp.assoc_laguerre(eta**2,positive_n,np.abs(m)))
+            output_temp = np.zeros(len(positive_n))
+            output_temp = Om0*t1*t2*t3*t4
             output[n+m>=0] = output_temp[:len(output[n+m>=0])]
     return output
 
@@ -147,27 +149,28 @@ def calculate_upper_n(nbar, fidelity):
             n += 1
         return n
 
-def generate_sequence(weights,rabi_fr):
+def generate_sequence(weights,rabi_fr,sb_transition):
     sequence = np.zeros(int(sum(weights)))
     i = 0
     for n, weight in enumerate(weights):
 
         if weight!=0:
-            sequence[i:i+weight] = np.full(weight, get_optimal_t(n+1, rabi_fr))
+            sequence[i:i+weight] = np.full(weight, get_optimal_t(n+1, rabi_fr, sb_transition))
             i+= weight
     return sequence[::-1]
 
-def create_sequence_n1(nbar, rabi_fr, fidelity = 1e-4):
+def create_sequence_n1(nbar, rabi_fr, sb_transition=-1, fidelity = 1e-4):
     weights = np.ones(calculate_upper_n(nbar, fidelity), dtype=int)
     print(len(weights))
-    sequence = generate_sequence(weights,rabi_fr)
-    return sequence
+    sequence = generate_sequence(weights,rabi_fr,sb_transition)
+    sb_order = np.ones(calculate_upper_n(nbar, fidelity), dtype=int) * (-1)
+    return [sequence, sb_order]
 
-def get_optimal_t(n, rabi_fr, LD_param=0.107):
-    return np.pi / Om_n_m(LD_param, n, -1, rabi_fr)
+def get_optimal_t(n, rabi_fr, sb_transition, LD_param=0.107):
+    return np.pi / Om_n_m(LD_param, n, sb_transition, rabi_fr)
 
-def prob_excitation_n(t, n_list, rabi_fr, LD_param):
-        rabi_rsb = Om_n_m(LD_param, n_list, -1, rabi_fr)
+def prob_excitation_n(t, n_list, rabi_fr, LD_param,sb=-1):
+        rabi_rsb = Om_n_m(LD_param, n_list, sb, rabi_fr)
         return np.sin(rabi_rsb*0.5*t)**2
 
 def create_const_seq(nbar, rabi_fr, n_pulses, fraction = 0.95):
@@ -198,7 +201,8 @@ class Simulate_sequence:
         self.LD_param = LD_param
         self.nbar = nbar
         self.rabi_fr = rabi_fr
-        self.pulse_sequence = pulse_sequence
+        self.sb_transition_list = pulse_sequence[1]
+        self.pulse_sequence = pulse_sequence[0]
         self.n_pulses_4_pn01 = 0
         self.max_fidelity = max_fidelity # corresponds to 1-sum(thermal pop considered)
         
@@ -273,14 +277,21 @@ class Simulate_sequence:
         # Calculate variation in population distribution for each pulse in the pulse sequence.
         extra_pop=0
         for i, pulse_time in enumerate(self.pulse_sequence):
+            sb_transition = self.sb_transition_list[i]
 
             prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
             self.accumulated_prob += prob_exc 
             
             if self.dispersion == False:
                 positive_contribution = np.zeros(len(n))
-                positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
-                negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+
+                if sb_transition == -1:
+                    positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
+                    negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+
+                elif sb_transition==-2:
+                    positive_contribution[:-2] = distribution[i,2:] * prob_excitation_n(pulse_time, n[2:], self.rabi_fr, self.LD_param, sb=sb_transition)
+                    negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param, sb=-2)
 
                 distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
 
