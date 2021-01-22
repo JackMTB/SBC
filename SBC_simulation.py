@@ -285,13 +285,13 @@ class Simulate_sequence:
             if self.dispersion == False:
                 positive_contribution = np.zeros(len(n))
 
-                if sb_transition == -1:
-                    positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
-                    negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+                # if sb_transition == -1:
+                positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
+                negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
 
-                elif sb_transition==-2:
-                    positive_contribution[:-2] = distribution[i,2:] * prob_excitation_n(pulse_time, n[2:], self.rabi_fr, self.LD_param, sb=sb_transition)
-                    negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param, sb=-2)
+                # elif sb_transition==-2:
+                #     positive_contribution[:-2] = distribution[i,2:] * prob_excitation_n(pulse_time, n[2:], self.rabi_fr, self.LD_param, sb=sb_transition)
+                #     negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param, sb=-2)
 
                 distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
 
