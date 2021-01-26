@@ -39,17 +39,19 @@ def Om_n_m(eta,n,m,Om0):
         if m == 0:
             t3 = 1
             t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+            output[n>=0] = Om0*t1*t2*t3*t4
             
         elif m > 0:
             t3 = product_pos_m(n[n>=0], m)
             t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
+            output[n>=0] = Om0*t1*t2*t3*t4
         
         elif m < 0:
             t3 = product_neg_m(n[n>=0], -m)
             t4 = np.abs(sp.assoc_laguerre(eta**2,n[n>=0],np.abs(m)))
-
-        output[n>=0] = Om0*t1*t2*t3*t4
-
+            output_temp = np.zeros(len(n))
+            output_temp[n>=0] = Om0*t1*t2*t3*t4
+            output[n+m>=0] = output_temp[:len(output[n+m>=0])]
     return output
 
 def product_pos_m(n, m):
@@ -74,8 +76,7 @@ def product_neg_m(n, m):
     else:
         prod = np.ones(np.shape(n), dtype=float)
         for i  in range(0,m):
-            prod[n-m>=0] = prod[n-m>=0] / (n[n-m>=0]+m-i)
-        prod[n-m<0] = 0
+            prod = prod / (n+m-i)
     return prod**0.5
 
     
@@ -146,13 +147,13 @@ def calculate_upper_n(nbar, fidelity):
             n += 1
         return n
 
-def generate_sequence(weights,rabi_fr):
+def generate_sequence(weights,rabi_fr,LD_param):
     sequence = np.zeros(int(sum(weights)))
     i = 0
     for n, weight in enumerate(weights):
 
         if weight!=0:
-            sequence[i:i+weight] = np.full(weight, get_optimal_t(n+1, rabi_fr))
+            sequence[i:i+weight] = np.full(weight, get_optimal_t(n+1, rabi_fr,LD_param))
             i+= weight
     return sequence[::-1]
 
@@ -162,7 +163,7 @@ def create_sequence_n1(LD_param, rabi_fr, upper_n, sb=-1):
     sb_order = np.ones(len(list_n)) * (-1)
     return [sequence[::-1],sb_order]
 
-def get_optimal_t(n, rabi_fr, LD_param=0.107):
+def get_optimal_t(n, rabi_fr, LD_param):
     return np.pi / Om_n_m(LD_param, n, -1, rabi_fr)
 
 def prob_excitation_n(t, n_list, rabi_fr, LD_param, sb=-1):
