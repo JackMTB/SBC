@@ -8,7 +8,7 @@ initial_nbar = 30
 LD_param = 0.1
 
 # Create a sideband cooling sequence
-seq_jj = sbc.create_sequence_n1(initial_nbar, rabi_fr, fidelity=1e-3)
+seq_jj = sbc.create_sequence_n1(LD_param, rabi_fr,200)
 
 # initialise figure
 pulse_sequence_list = [seq_jj,seq_jj]

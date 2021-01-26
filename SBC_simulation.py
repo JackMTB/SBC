@@ -156,17 +156,17 @@ def generate_sequence(weights,rabi_fr):
             i+= weight
     return sequence[::-1]
 
-def create_sequence_n1(nbar, rabi_fr, fidelity = 1e-4):
-    weights = np.ones(calculate_upper_n(nbar, fidelity), dtype=int)
-    print(len(weights))
-    sequence = generate_sequence(weights,rabi_fr)
-    return sequence
+def create_sequence_n1(LD_param, rabi_fr, upper_n, sb=-1):
+    list_n = np.arange(1,upper_n,dtype=int)
+    sequence = np.pi / Om_n_m(LD_param, list_n,sb, rabi_fr)
+    sb_order = np.ones(len(list_n)) * (-1)
+    return [sequence[::-1],sb_order]
 
 def get_optimal_t(n, rabi_fr, LD_param=0.107):
     return np.pi / Om_n_m(LD_param, n, -1, rabi_fr)
 
-def prob_excitation_n(t, n_list, rabi_fr, LD_param):
-        rabi_rsb = Om_n_m(LD_param, n_list, -1, rabi_fr)
+def prob_excitation_n(t, n_list, rabi_fr, LD_param, sb=-1):
+        rabi_rsb = Om_n_m(LD_param, n_list, sb, rabi_fr)
         return np.sin(rabi_rsb*0.5*t)**2
 
 def create_const_seq(nbar, rabi_fr, n_pulses, fraction = 0.95):
@@ -197,7 +197,8 @@ class Simulate_sequence:
         self.LD_param = LD_param
         self.nbar = nbar
         self.rabi_fr = rabi_fr
-        self.pulse_sequence = pulse_sequence
+        self.pulse_sequence = pulse_sequence[0]
+        self.sb_order = pulse_sequence[1] 
         self.n_pulses_4_pn01 = 0
         self.max_fidelity = max_fidelity # corresponds to 1-sum(thermal pop considered)
         
@@ -273,14 +274,24 @@ class Simulate_sequence:
         extra_pop=0
         for i, pulse_time in enumerate(self.pulse_sequence):
 
+            chosen_exc_sb = self.sb_order[i]
             prob_exc = prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
             self.accumulated_prob += prob_exc 
             
             if self.dispersion == False:
-                positive_contribution = np.zeros(len(n))
-                positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
-                negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+                
+                if chosen_exc_sb == -1:
 
+                    positive_contribution = np.zeros(len(n))
+                    positive_contribution[:-1] = distribution[i,1:] * prob_excitation_n(pulse_time, n[1:], self.rabi_fr, self.LD_param)
+                    negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param)
+                
+                elif chosen_exc_sb == -2:
+
+                    positive_contribution = np.zeros(len(n))
+                    positive_contribution[:-2] = distribution[i,2:] * prob_excitation_n(pulse_time, n[2:], self.rabi_fr, self.LD_param, -2)
+                    negative_contribution = distribution[i] * prob_excitation_n(pulse_time, n, self.rabi_fr, self.LD_param, -2)
+               
                 distribution[i+1] = distribution[i] + positive_contribution - negative_contribution
 
             elif self.dispersion == True:
